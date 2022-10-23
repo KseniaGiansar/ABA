@@ -1,0 +1,189 @@
+---
+title: "Task 1"
+author: "Group F, Ksenia Petrova, Nguyet Dao"
+date: '2022-10-23'
+output:
+  word_document: default
+  pdf_document: default
+---
+
+#### Topic
+
+##### Research question:
+
+Is there connection between total annual cost of electricity and total annual sales of the company?
+
+##### Research hypothesis:
+
+total annual cost of electricity is related to total annual sales.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, purl=TRUE}
+data <- read.csv('https://raw.githubusercontent.com/adam-54/class/main/common/beeps_c.csv')
+
+# subsetting by country
+country_data <- subset(data, country =='Portugal')
+```
+
+#### 1. Target variable - total annual sales for all products 
+
+```{r echo=FALSE, purl=TRUE}
+d2 <- country_data$d2
+```
+
+##### Checking for missing data
+
+```{r echo=FALSE}
+x1 <- length(d2)
+x2 <- sum(d2 == -9)
+sprintf("Total number of values is %d", x1)
+sprintf("Number of missing values is %d", x2)
+```
+
+##### Summary statistics
+
+```{r echo=FALSE}
+d2 <- replace(d2, d2 == -9, NA)
+summary(d2)
+x3 <- var(as.numeric(d2), na.rm = TRUE)
+x4 <- sd(as.numeric(d2), na.rm = TRUE)
+sprintf("Variance is equal to %f", x3)
+sprintf("Standard deviation is equal to %f", x4)
+```
+
+##### Original target distribution
+
+```{r echo=FALSE}
+hist(as.numeric(country_data$d2), col = 'blue',
+     xlab = 'Values',
+     main = paste("Original target distribution"))
+```
+
+Target variable is skewed and requires transformation.
+
+##### Imputation and log transformation
+
+Share of missing values isn't too high, still they were imputed with the mean value. Log transformation was applied to data to conform to normality.
+
+```{r echo=FALSE}
+d2[is.na(d2)] <- mean(as.numeric(d2), na.rm = TRUE)
+#d2 <- replace(d2, max(d2), mean(as.numeric(d2)))
+d2 <- log10(d2)
+```
+
+##### Boxplot
+
+```{r echo=FALSE}
+boxplot(d2)
+```
+
+##### Histogram and distribution
+
+```{r echo=FALSE}
+library(ggplot2)
+p11 = ggplot(as.data.frame(d2), aes(x=d2)) +
+  geom_histogram(aes(y = ..density..), binwidth=.25, colour="black", fill="white") +
+  xlab('Values') +
+  stat_function(fun = dnorm, lwd = 2, col = 'red', 
+                args = list(mean = mean(d2), sd = sd(d2)))
+p11
+```
+
+As we can see from the histogram, target variable is distributed normally.
+
+#### 2. Categorical predictor - establishment's main activity and product
+
+| 1             | 2            | 3          | 4            | 5                   | 6                |
+|--------------|-------------|----------|----------|-------------|----------------|
+| Manufacturing | Retail trade | Whole sale | Construction | Hotel or restaraunt | Provide services |
+
+\% of values in each category
+
+```{r echo=FALSE}
+# frequency
+categories <- country_data$d1a1a
+value_freq <- table(categories, useNA = 'ifany')
+
+# percent
+value_percent <- round(100 * (value_freq/length(categories)), 2)
+value_percent
+
+```
+
+##### Boxplot by groups
+
+```{r echo=FALSE}
+dd <- cbind(d2, categories)
+boxplot(dd[, 1] ~ dd[, 2],
+        xlab = 'product categories',
+        ylab = 'values')
+```
+
+##### Histogram of categorical predictor
+
+```{r echo=FALSE}
+hist(categories, 
+     main = 'Categorical predictor',
+     xlab = 'Product category')
+
+```
+
+##### Counting amount of NAs in each product category
+
+```{r echo=FALSE}
+library(dplyr)
+df1 <- cbind(country_data$d2, country_data$d1a1a)
+mydf <- data.frame(values = country_data$d2,
+                  categories = country_data$d1a1a)
+df2 <- replace(mydf, mydf == -9, NA)
+na_count <- df2 %>% filter(is.na(values)) %>% group_by(categories) %>% summarise(n = n())
+na_count
+```
+
+#### 3. Continuous predictor
+
+```{r echo=FALSE}
+n2b <- country_data$n2b
+```
+
+##### Checking missing data
+
+```{r echo=FALSE}
+x4 <- length(n2b)
+x5 <- sum(n2b == -9)
+sprintf("Total number of values is %d", x4)
+sprintf("Number of missing values is %d", x5)
+```
+
+##### Imputation and log transformation
+
+Missing data was imputed with the mean value. Data was log transformed also to better fit to target variable.
+
+```{r echo=FALSE}
+n2b <- replace(n2b, n2b == -9, mean(as.numeric(n2b)))
+n2b <- log10(as.numeric(n2b))
+```
+
+##### Scatterplot of target and predictor
+
+```{r echo=FALSE}
+plot(d2, n2b, col = 'blue',
+     xlab = 'Total annual sales',
+     ylab = 'Total annual cost of electricity ')
+
+```
+
+##### How closely related two variables are (Pearson test)
+
+```{r echo=FALSE}
+res <- cor.test(country_data$d2, as.numeric(country_data$n2b), method = 'pearson')
+cor_est <- round(as.numeric(res$estimate), 3)
+sprintf("Correlation coefficient is equal to %f", cor_est)
+```
+
+Correlation between variables is rather high. It's expected that total annual cost of electricity and total annual sales are connected.
+
+
